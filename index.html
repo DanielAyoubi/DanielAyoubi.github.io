@@ -22,6 +22,13 @@
 html{scroll-behavior:smooth}
 body{font-family:'Lora',Georgia,serif;background:var(--bg);color:var(--text);min-height:100vh;transition:var(--transition)}
 
+#particleCanvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:.38}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.5;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")
+}
+.theme-btn,.page{position:relative;z-index:2}
+
 .theme-btn{
   position:fixed;top:20px;right:20px;z-index:50;
   background:var(--bg2);border:1px solid var(--border);border-radius:50%;
@@ -106,6 +113,20 @@ body{font-family:'Lora',Georgia,serif;background:var(--bg);color:var(--text);min
 }
 .footer-text{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)}
 
+/* event row */
+.event-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.event-tag{
+  font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  background:color-mix(in srgb,var(--accent) 10%,transparent);
+  border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
+  color:var(--accent);border-radius:20px;padding:4px 12px
+}
+.event-location{
+  display:flex;align-items:center;gap:5px;
+  font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.08em;
+  color:var(--text3)
+}
+
 @media(max-width:500px){
   .page{padding:44px 16px 56px}
   .research-card{padding:20px 18px}
@@ -115,6 +136,7 @@ body{font-family:'Lora',Georgia,serif;background:var(--bg);color:var(--text);min
 </head>
 <body>
 
+<canvas id="particleCanvas"></canvas>
 <button class="theme-btn" id="themeToggle" title="Toggle theme" aria-label="Toggle theme">🌓</button>
 
 <div class="page">
@@ -132,20 +154,27 @@ body{font-family:'Lora',Georgia,serif;background:var(--bg);color:var(--text);min
   <div class="divider"></div>
 
   <div class="section">
-    <div class="section-heading">Research</div>
+    <div class="section-heading">Conference poster</div>
     <div class="research-card">
-      <div class="research-title">Imaging <em>oxygen</em> inside organic aerosol particles</div>
-      <div class="research-body">
-        Organic aerosols make up <strong>20–70%</strong> of atmospheric particulate matter and drive the radical chemistry that determines air quality and climate impacts. My work develops the first fluorescence microscopy method to directly image O&#8322; availability inside individual particles — revealing how <strong>phase state and viscosity</strong> control atmospheric reactivity.
+      <div class="event-row">
+        <span class="event-tag">NOSA Symposium 2026</span>
+        <span class="event-location">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Lund, Sweden
+        </span>
+      </div>
+      <div class="research-title" style="margin-top:14px">Impacts of Aerosol Science &amp; Technology</div>
+      <div class="research-body" style="margin-bottom:22px;margin-top:6px">
+        Poster presentation on direct fluorescence imaging of O&#8322; availability and diffusion inside individual organic aerosol particles.
       </div>
       <!-- Replace poster.pdf with the actual filename you commit to your repo -->
-      <a href="NOSA_Poster.pdf" class="poster-btn" download>
+      <a href="poster.pdf" class="poster-btn" download>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="7 10 12 15 17 10"/>
           <line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
-        Download conference poster
+        Download poster
       </a>
     </div>
   </div>
@@ -203,6 +232,73 @@ body{font-family:'Lora',Georgia,serif;background:var(--bg);color:var(--text);min
     root.setAttribute('data-theme', next);
     localStorage.setItem('theme', next);
   });
+  // Particle canvas
+  (function(){
+    const c = document.getElementById('particleCanvas');
+    const ctx = c.getContext('2d');
+    let W, H, particles = [];
+
+    function resize(){
+      W = c.width = window.innerWidth;
+      H = c.height = window.innerHeight;
+      init();
+    }
+    function rnd(a,b){ return a + Math.random()*(b-a) }
+
+    function init(){
+      particles = [];
+      const n = Math.floor(W * H / 16000);
+      for(let i=0;i<n;i++){
+        const r = rnd(.5, 2.5);
+        particles.push({
+          x:rnd(0,W), y:rnd(0,H), r,
+          vx:rnd(-.12,.12), vy:rnd(-.12,.12),
+          opacity:rnd(.07,.38),
+          connected: Math.random() > .65,
+          hue: Math.random() > .7 ? 200 : 215,
+        });
+      }
+    }
+
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      for(let i=0;i<particles.length;i++){
+        for(let j=i+1;j<particles.length;j++){
+          if(!particles[i].connected && !particles[j].connected) continue;
+          const dx = particles[j].x - particles[i].x;
+          const dy = particles[j].y - particles[i].y;
+          const dist = Math.sqrt(dx*dx+dy*dy);
+          if(dist < 90){
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = `rgba(74,158,255,${.055*(1-dist/90)})`;
+            ctx.lineWidth = .5;
+            ctx.stroke();
+          }
+        }
+      }
+      particles.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+        ctx.fillStyle = `hsla(${p.hue},58%,72%,${p.opacity})`;
+        ctx.fill();
+      });
+    }
+
+    function update(){
+      particles.forEach(p => {
+        p.x += p.vx; p.y += p.vy;
+        if(p.x < -10) p.x = W+10; if(p.x > W+10) p.x = -10;
+        if(p.y < -10) p.y = H+10; if(p.y > H+10) p.y = -10;
+      });
+    }
+
+    function loop(){ draw(); update(); requestAnimationFrame(loop); }
+    window.addEventListener('resize', resize);
+    resize(); loop();
+  })();
+
   document.getElementById('year').textContent = new Date().getFullYear();
 </script>
 </body>
