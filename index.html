@@ -1,305 +1,54 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Daniel Ayoubi</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,700;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-:root{--radius:10px;--transition:all 0.25s ease}
-[data-theme="dark"]{
-  --bg:#0b0d11;--bg2:#13161d;--bg3:#1a1e28;--border:#242836;
-  --text:#dde3f0;--text2:#7a8aaa;--text3:#48576e;
-  --gold:#e8c96a;--accent:#4a9eff;--shadow:rgba(0,0,0,.55)
-}
-[data-theme="light"]{
-  --bg:#f5f6fa;--bg2:#ffffff;--bg3:#eef0f6;--border:#dde2ee;
-  --text:#111827;--text2:#5a6880;--text3:#9aaabf;
-  --gold:#b8931a;--accent:#1a6ecc;--shadow:rgba(0,0,0,.10)
-}
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{font-family:'Lora',Georgia,serif;background:var(--bg);color:var(--text);min-height:100vh;transition:var(--transition)}
-
-#particleCanvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:.85}
-body::after{
-  content:'';position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.5;
-  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")
-}
-.theme-btn,.page{position:relative;z-index:2}
-
-.theme-btn{
-  position:fixed;top:20px;right:20px;z-index:50;
-  background:var(--bg2);border:1px solid var(--border);border-radius:50%;
-  width:38px;height:38px;display:flex;align-items:center;justify-content:center;
-  font-size:16px;cursor:pointer;box-shadow:0 2px 12px var(--shadow);transition:var(--transition)
-}
-.theme-btn:hover{border-color:var(--text3);transform:scale(1.08)}
-
-.page{max-width:640px;margin:0 auto;padding:64px 24px 80px;display:flex;flex-direction:column}
-
-/* identity */
-.identity{display:flex;flex-direction:column;align-items:center;text-align:center;padding-bottom:48px}
-.avatar{
-  width:96px;height:96px;border-radius:50%;object-fit:cover;
-  border:2px solid var(--gold);
-  box-shadow:0 0 0 6px color-mix(in srgb,var(--gold) 10%,transparent);
-  margin-bottom:22px
-}
-.name{font-size:26px;font-weight:700;letter-spacing:-.02em;color:var(--text);margin-bottom:6px}
-.tagline{font-size:14.5px;color:var(--text2);font-style:italic;line-height:1.65;max-width:400px;margin:0 auto}
-.meta-row{margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-.meta-chip{
-  font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;
-  color:var(--text3);background:var(--bg3);border:1px solid var(--border);
-  border-radius:20px;padding:4px 12px
-}
-
-.divider{height:1px;background:var(--border)}
-
-.section{padding:38px 0}
-.section-heading{
-  font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;
-  color:var(--gold);margin-bottom:18px;display:flex;align-items:center;gap:10px
-}
-.section-heading::after{content:'';flex:1;height:1px;background:var(--border)}
-
-/* research card */
-.research-card{
-  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
-  padding:26px 28px;position:relative;overflow:hidden
-}
-.research-card::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:2px;
-  background:linear-gradient(90deg,var(--accent),transparent)
-}
-.research-title{font-size:17px;font-weight:700;color:var(--text);margin-bottom:10px;line-height:1.35;letter-spacing:-.01em}
-.research-title em{color:var(--accent);font-style:italic}
-.research-body{font-size:14px;color:var(--text2);line-height:1.75;margin-bottom:22px}
-.research-body strong{color:var(--text);font-weight:600}
-.poster-btn{
-  display:inline-flex;align-items:center;gap:8px;
-  background:var(--accent);color:#fff;
-  font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.09em;text-transform:uppercase;
-  text-decoration:none;padding:10px 20px;border-radius:6px;transition:background .2s,transform .15s
-}
-.poster-btn:hover{background:#3a8eff;transform:translateY(-1px)}
-.poster-btn svg{width:13px;height:13px;flex-shrink:0}
-
-/* links */
-.link-list{display:flex;flex-direction:column;gap:9px}
-.link-item{
-  display:flex;align-items:center;gap:14px;
-  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
-  padding:13px 16px;text-decoration:none;color:var(--text);font-size:14.5px;font-weight:500;
-  transition:border-color .2s,background .2s,transform .15s
-}
-.link-item:hover{border-color:var(--text3);background:var(--bg3);transform:translateX(3px)}
-.link-icon{
-  width:34px;height:34px;border-radius:7px;background:var(--bg3);border:1px solid var(--border);
-  display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;transition:border-color .2s
-}
-.link-item:hover .link-icon{border-color:var(--text3)}
-.link-label{flex:1}
-.link-sub{display:block;font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;letter-spacing:.04em;margin-top:2px;font-style:normal;font-weight:400}
-.link-arrow{color:var(--text3);font-size:13px;transition:transform .2s,color .2s}
-.link-item:hover .link-arrow{transform:translateX(3px);color:var(--text2)}
-
-/* footer */
-.footer{
-  padding-top:38px;border-top:1px solid var(--border);
-  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px
-}
-.footer-text{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)}
-
-/* event row */
-.event-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.event-tag{
-  font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
-  background:color-mix(in srgb,var(--accent) 10%,transparent);
-  border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
-  color:var(--accent);border-radius:20px;padding:4px 12px
-}
-.event-location{
-  display:flex;align-items:center;gap:5px;
-  font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.08em;
-  color:var(--text3)
-}
-
-@media(max-width:500px){
-  .page{padding:44px 16px 56px}
-  .research-card{padding:20px 18px}
-  .footer{flex-direction:column;text-align:center}
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daniel Ayoubi</title>
 </head>
 <body>
 
-<canvas id="particleCanvas"></canvas>
-<button class="theme-btn" id="themeToggle" title="Toggle theme" aria-label="Toggle theme">🌓</button>
+  <h1>Daniel Ayoubi</h1>
+  <p>Aarhus University</p>
 
-<div class="page">
+  <hr>
 
-  <div class="identity">
-    <img src="https://github.com/DanielAyoubi.png" alt="Daniel Ayoubi" class="avatar">
-    <div class="name">Daniel Ayoubi</div>
-    <div class="tagline">👋</div>
-    <div class="meta-row">
-      <span class="meta-chip">Aarhus University</span>
-      <!-- <span class="meta-chip">Atmospheric Chemistry</span> -->
-    </div>
-  </div>
+  <h2>Conference poster</h2>
 
-  <div class="divider"></div>
+  <p><strong>NOSA Symposium 2026</strong> — Lund, Sweden</p>
 
-  <div class="section">
-    <div class="section-heading">Conference poster</div>
-    <div class="research-card">
-      <div class="event-row">
-        <span class="event-tag">NOSA Symposium 2026</span>
-        <span class="event-location">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          Lund, Sweden
-        </span>
-      </div>
-      <div class="research-title" style="margin-top:14px">Impacts of Aerosol Science &amp; Technology</div>
-      <div class="research-body" style="margin-bottom:22px;margin-top:6px">
-        Poster presentation on direct fluorescence imaging of O&#8322; availability and diffusion inside individual organic aerosol particles.
-      </div>
-      <!-- Replace poster.pdf with the actual filename you commit to your repo -->
-      <a href="NOSA_Poster.pdf" class="poster-btn" download>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-        Download poster
-      </a>
-    </div>
-  </div>
+  <h3>Impacts of Aerosol Science &amp; Technology</h3>
 
-  <div class="divider"></div>
+  <p>
+    Poster presentation on direct fluorescence imaging of O₂ availability
+    and diffusion inside individual organic aerosol particles.
+  </p>
 
-  <div class="section">
-    <div class="section-heading">Links</div>
-    <div class="link-list">
+  <p><a href="NOSA_Poster.pdf" download>Download poster</a></p>
 
-      <a href="https://github.com/DanielAyoubi" class="link-item" target="_blank" rel="noopener">
-        <div class="link-icon">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
-          </svg>
-        </div>
-        <div class="link-label">GitHub<span class="link-sub">github.com/DanielAyoubi</span></div>
-        <span class="link-arrow">→</span>
-      </a>
+  <hr>
 
-      <a href="https://www.linkedin.com/in/danielayoubi/" class="link-item" target="_blank" rel="noopener">
-        <div class="link-icon">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-          </svg>
-        </div>
-        <div class="link-label">LinkedIn<span class="link-sub">linkedin.com/in/danielayoubi</span></div>
-        <span class="link-arrow">→</span>
-      </a>
+  <h2>Links</h2>
 
-      <a href="https://danielayoubi.github.io/Shawarmabloggen.github.io/" class="link-item" target="_blank" rel="noopener">
-        <div class="link-icon">🌯</div>
-        <div class="link-label">Shawarma Reviews<span class="link-sub">The important science</span></div>
-        <span class="link-arrow">→</span>
-      </a>
+  <p>
+    <a href="https://github.com/DanielAyoubi" target="_blank">GitHub</a><br>
+    github.com/DanielAyoubi
+  </p>
 
-    </div>
-  </div>
+  <p>
+    <a href="https://www.linkedin.com/in/danielayoubi/" target="_blank">LinkedIn</a><br>
+    linkedin.com/in/danielayoubi
+  </p>
 
-  <div class="footer">
-    <span class="footer-text">© <span id="year"></span> Daniel Ayoubi</span>
-    <span class="footer-text">Aarhus, Denmark</span>
-  </div>
+  <p>
+    <a href="https://danielayoubi.github.io/Shawarmabloggen.github.io/" target="_blank">🌯 Shawarma Reviews</a><br>
+    The important science
+  </p>
 
-</div>
+  <hr>
 
-<script>
-  const root = document.documentElement;
-  const btn  = document.getElementById('themeToggle');
-  const stored = localStorage.getItem('theme');
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  root.setAttribute('data-theme', stored || (prefersDark ? 'dark' : 'light'));
-  btn.addEventListener('click', () => {
-    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    root.setAttribute('data-theme', next);
-    localStorage.setItem('theme', next);
-  });
-  // Particle canvas
-  (function(){
-    const c = document.getElementById('particleCanvas');
-    const ctx = c.getContext('2d');
-    let W, H, particles = [];
+  <p>© 2026 Daniel Ayoubi</p>
+  <p>Aarhus, Denmark</p>
 
-    function resize(){
-      W = c.width = window.innerWidth;
-      H = c.height = window.innerHeight;
-      init();
-    }
-    function rnd(a,b){ return a + Math.random()*(b-a) }
-
-    function init(){
-      particles = [];
-      const n = Math.floor(W * H / 7000);
-      for(let i=0;i<n;i++){
-        const r = rnd(1, 3.5);
-        particles.push({
-          x:rnd(0,W), y:rnd(0,H), r,
-          vx:rnd(-.15,.15), vy:rnd(-.15,.15),
-          opacity:rnd(.25,.7),
-          connected: Math.random() > .45,
-          hue: Math.random() > .7 ? 200 : 215,
-        });
-      }
-    }
-
-    function draw(){
-      ctx.clearRect(0,0,W,H);
-      for(let i=0;i<particles.length;i++){
-        for(let j=i+1;j<particles.length;j++){
-          if(!particles[i].connected && !particles[j].connected) continue;
-          const dx = particles[j].x - particles[i].x;
-          const dy = particles[j].y - particles[i].y;
-          const dist = Math.sqrt(dx*dx+dy*dy);
-          if(dist < 110){
-            ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(74,158,255,${.22*(1-dist/110)})`;
-            ctx.lineWidth = .8;
-            ctx.stroke();
-          }
-        }
-      }
-      particles.forEach(p => {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-        ctx.fillStyle = `hsla(${p.hue},65%,75%,${p.opacity})`;
-        ctx.fill();
-      });
-    }
-
-    function update(){
-      particles.forEach(p => {
-        p.x += p.vx; p.y += p.vy;
-        if(p.x < -10) p.x = W+10; if(p.x > W+10) p.x = -10;
-        if(p.y < -10) p.y = H+10; if(p.y > H+10) p.y = -10;
-      });
-    }
-
-    function loop(){ draw(); update(); requestAnimationFrame(loop); }
-    window.addEventListener('resize', resize);
-    resize(); loop();
-  })();
-
-  document.getElementById('year').textContent = new Date().getFullYear();
-</script>
 </body>
 </html>
