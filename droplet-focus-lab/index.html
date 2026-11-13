@@ -1,0 +1,793 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Droplet Focus Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one vertical light path on the left (sample, objective lens, camera sensor, then the camera's line profile on the same x-axis); explanation and settings on the right. */
+:root {
+  --bg: #f2f4f7; --panel: #ffffff; --ink: #17212b; --muted: #5a6673; --line: #d3dae2;
+  --focus: #b3267a; --ray: #c47708; --miss: #87919d; --lost: #c74d2e; --tir: #0f8763;
+  --drop: rgba(46, 150, 190, 0.22); --drop-edge: #2b86ad; --glass: rgba(110, 135, 175, 0.28);
+  --metal: #b9c2cd; --lens: rgba(120, 170, 215, 0.45); --inc: rgba(230, 150, 60, 0.35);
+  --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11151a; --panel: #192027; --ink: #e5eaf0; --muted: #98a4b0; --line: #2b343e;
+  --focus: #f267b3; --ray: #f0a63a; --miss: #77828f; --lost: #f07a5a; --tir: #47c9a1;
+  --drop: rgba(70, 180, 220, 0.2); --drop-edge: #5db9de; --glass: rgba(120, 150, 200, 0.25);
+  --metal: #414c58; --lens: rgba(130, 185, 235, 0.3); --inc: rgba(240, 170, 80, 0.3); color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11151a; --panel: #192027; --ink: #e5eaf0; --muted: #98a4b0; --line: #2b343e;
+  --focus: #f267b3; --ray: #f0a63a; --miss: #77828f; --lost: #f07a5a; --tir: #47c9a1;
+  --drop: rgba(70, 180, 220, 0.2); --drop-edge: #5db9de; --glass: rgba(120, 150, 200, 0.25);
+  --metal: #414c58; --lens: rgba(130, 185, 235, 0.3); --inc: rgba(240, 170, 80, 0.3); color-scheme: dark }
+
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5;
+  padding-block: 18px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+h1 { font-size: 22px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+h2 { font-size: 13px; font-weight: 600; margin: 0; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.lede { margin: 2px 0 0; color: var(--muted); }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+@media (min-width: 901px) { aside.panel { position: sticky; top: 12px; } }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { padding: 6px 12px; cursor: pointer; font-size: 14px; color: var(--muted); border-left: 1px solid var(--line); }
+.seg label:first-of-type { border-left: 0; }
+.seg input:checked + label { background: var(--ink); color: var(--bg); }
+.seg input:focus-visible + label { outline: 2px solid var(--focus); outline-offset: -2px; }
+canvas { display: block; width: 100%; }
+#diagram, #profile { max-width: 560px; margin: 0 auto; }
+#diagram { touch-action: none; cursor: grab; }
+.focusrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.focusrow label { font-weight: 600; color: var(--focus); }
+.focusrow output { font-family: var(--mono); font-size: 14px; min-width: 7ch; text-align: right; }
+input[type=range] { width: 100%; accent-color: var(--ink); margin: 0; }
+.focusrow input[type=range] { accent-color: var(--focus); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 22px; height: 0; border-top: 2px solid; display: inline-block; }
+.sw.dash { border-top-style: dashed; }
+.dot { width: 9px; height: 9px; border-radius: 50%; border: 2px solid; display: inline-block; }
+#explain { margin: 0; font-size: 15px; }
+#explain b { font-weight: 600; }
+.camrow { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+#camera { width: 130px; height: 130px; border-radius: 6px; background: #000; flex: none; }
+dl { margin: 0; display: grid; gap: 8px; flex: 1; min-width: 130px; }
+dt { font-size: 12px; color: var(--muted); }
+dd { margin: 0; font-family: var(--mono); font-size: 14px; font-variant-numeric: tabular-nums; }
+ol.steps { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+button { font: inherit; font-size: 14px; padding: 5px 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; text-align: left; }
+button:hover { border-color: var(--muted); }
+button.on { border-color: var(--focus); }
+button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.ctl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: baseline; }
+.ctl label { font-size: 14px; }
+.ctl output { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.ctl input { grid-column: 1 / -1; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.cap { font-size: 13px; color: var(--muted); margin: 0; }
+details summary { cursor: pointer; font-weight: 500; }
+details .inner { display: flex; flex-direction: column; gap: 12px; padding-top: 12px; }
+details ul { margin: 8px 0 0; padding-left: 20px; font-size: 14px; color: var(--muted); }
+details li { margin: 4px 0; }
+</style>
+
+<div class="wrap">
+  <header>
+    <p style="margin:0 0 6px"><a href="../index.html"style="color:var(--muted);text-decoration:none;font-size:14px">&larr; Daniel Ayoubi</a></p>
+    <h1>Droplet Focus Lab</h1>
+    <p class="lede">Follow the light from the droplet, through the objective lens, to the camera. Move the focus and see where it lands.</p>
+  </header>
+
+  <div class="grid">
+    <section class="panel">
+      <div class="bar">
+        <span class="seg">
+          <input type="radio" name="mode" id="mode-fluo" value="fluo" checked><label for="mode-fluo">Fluorescence</label>
+          <input type="radio" name="mode" id="mode-bf" value="bf"><label for="mode-bf">Brightfield</label></span>
+        <span class="seg">
+          <input type="radio" name="geom" id="geom-normal" value="normal" checked><label for="geom-normal">Normal setup</label>
+          <input type="radio" name="geom" id="geom-hanging" value="hanging"><label for="geom-hanging">Inverted (hanging droplet)</label></span>
+      </div>
+      <div class="focusrow">
+        <label for="z">Focus z</label>
+        <input type="range" id="z" min="-8" max="30" step="0.5" value="0">
+        <output id="z-out"></output>
+      </div>
+      <canvas id="diagram" aria-label="Light path from the droplet through the objective lens to the camera sensor"></canvas>
+      <canvas id="profile" aria-label="Intensity profile recorded by the camera at the current focus"></canvas>
+      <p class="cap" id="profile-cap"></p>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <aside class="panel">
+      <h2>What is happening</h2>
+      <p id="explain"></p>
+
+      <h2>Walkthrough</h2>
+      <ol class="steps">
+        <li><button type="button" data-preset="sharp">A point in focus</button></li>
+        <li><button type="button" data-preset="up">Same point, objective moved up 20 µm</button></li>
+        <li><button type="button" data-preset="mirror">The droplet surface as a mirror</button></li>
+        <li><button type="button" data-preset="hanging">Hanging droplet</button></li>
+        <li><button type="button" data-preset="rim">Brightfield: the dark rim</button></li>
+        <li><button type="button" data-preset="inclusion">A second phase inside</button></li>
+      </ol>
+
+      <h2>Camera image, seen from below</h2>
+      <div class="camrow">
+        <canvas id="camera" width="130" height="130" aria-label="Simulated camera image of the droplet"></canvas>
+        <dl id="stats"></dl>
+      </div>
+
+      <details>
+        <summary>More settings</summary>
+        <div class="inner">
+          <div class="ctl"><label for="ca">Contact angle</label><output id="ca-out"></output>
+            <input type="range" id="ca" min="30" max="110" step="1" value="75"></div>
+          <div class="ctl"><label for="nd">Droplet refractive index</label><output id="nd-out"></output>
+            <input type="range" id="nd" min="1.33" max="1.60" step="0.01" value="1.45"></div>
+          <div class="bar"><span>Objective</span><span class="seg">
+            <input type="radio" name="imm" id="imm-air" value="air" checked><label for="imm-air">Air</label>
+            <input type="radio" name="imm" id="imm-oil" value="oil"><label for="imm-oil">Oil</label></span></div>
+          <div class="ctl"><label for="na">Objective NA</label><output id="na-out"></output>
+            <input type="range" id="na" min="0.2" max="0.95" step="0.01" value="0.75"></div>
+          <div class="ctl" id="cna-ctl"><label for="cna">Condenser NA</label><output id="cna-out"></output>
+            <input type="range" id="cna" min="0" max="0.6" step="0.02" value="0.1"></div>
+          <label class="check"><input type="checkbox" id="inc"> Add a second-phase inclusion (drag it in the picture)</label>
+          <div class="ctl"><label for="incR">Inclusion radius</label><output id="incR-out"></output>
+            <input type="range" id="incR" min="2" max="10" step="0.5" value="5"></div>
+          <div class="ctl"><label for="incN">Inclusion refractive index</label><output id="incN-out"></output>
+            <input type="range" id="incN" min="1.33" max="1.60" step="0.01" value="1.38"></div>
+          <div class="ctl" id="incDye-ctl"><label for="incDye">Dye in inclusion vs. the rest</label><output id="incDye-out"></output>
+            <input type="range" id="incDye" min="0" max="3" step="0.1" value="0.2"></div>
+        </div>
+      </details>
+
+      <details>
+        <summary>What is simplified</summary>
+        <ul>
+          <li>The picture is a 2D slice through the middle of the droplet and is not to scale. A real objective is millimetres wide and sits much further from the sample; here it is drawn as one lens just below the coverslip.</li>
+          <li>The objective accepts a ray by its angle (set by the NA), not by where it hits the lens. Moving the objective does not change which rays are accepted, only where they land on the camera.</li>
+          <li>A real objective has many lens elements and a tube lens, and the image is magnified and flipped. Here the camera image is shown at the same size as the sample. It is mirrored left to right, which a real lens also does.</li>
+          <li>Only ray optics is included: refraction, total internal reflection and partial reflection. There is no diffraction, so a point in focus is perfectly sharp.</li>
+          <li>Fluorescence assumes the dye is excited evenly everywhere. Very weak reflected rays are not drawn but are counted in the camera image.</li>
+        </ul>
+      </details>
+    </aside>
+  </div>
+</div>
+
+<script>
+// World units are micrometres. y = 0 is the top surface of the coverslip. The objective and camera are below.
+const XB = 90, CAM_Y = -108, Y0 = -117, LENS_BASE = -50;
+const T_COVER = 12, T_SLIDE = 10, GAP = 14, A = 30, N_GLASS = 1.52;
+const NB = 2 * XB, EPS = 1e-6, MAX_DEPTH = 8, CUTOFF = 0.02;
+
+const state = {
+  mode: 'fluo', geom: 'normal', imm: 'air',
+  z: 0, ca: 75, nd: 1.45, na: 0.75, cna: 0.1,
+  inc: false, incR: 5, incN: 1.38, incDye: 0.2,
+  probe: { u: 26, v: 1.5 },   // u = sideways position, v = distance from the flat droplet/glass surface
+  incPos: { u: -8, v: 12 }
+};
+
+let S = {};          // current scene geometry
+let segs = [], tirPoints = [];
+let profile = new Float64Array(NB), probeSpot = new Float64Array(NB);
+let stats = {};
+let presetNote = '';
+
+function buildScene() {
+  const th = state.ca * Math.PI / 180;
+  const R = A / Math.sin(th);
+  const h = R * (1 - Math.cos(th));
+  S = { th: th, R: R, h: h, nImm: state.imm === 'oil' ? 1.518 : 1 };
+  if (state.geom === 'normal') {
+    S.flatY = 0; S.cy = -R * Math.cos(th); S.yRef = 0; S.top = 52;
+  } else {
+    S.flatY = GAP + h; S.cy = S.flatY + R * Math.cos(th); S.yRef = GAP; S.top = 76;
+  }
+  S.yf = S.yRef + state.z;
+  S.lensY = LENS_BASE + state.z;   // the objective lens moves together with its focal plane
+
+  if (!insideDrop(state.probe.u, localY(state.probe.v))) state.probe = { u: 0, v: h * 0.4 };
+  if (!inclusionFits(state.incPos.u, state.incPos.v, state.incR)) {
+    state.incR = Math.max(2, Math.min(state.incR, h / 2 - 1.5));
+    state.incPos = { u: 0, v: h / 2 };
+  }
+  S.ix = state.incPos.u; S.iy = localY(state.incPos.v);
+}
+
+function localY(v) { return state.geom === 'normal' ? v : S.flatY - v; }
+
+function insideDrop(x, y) {
+  if (state.geom === 'normal' ? y <= 0 : y >= S.flatY) return false;
+  return x * x + (y - S.cy) * (y - S.cy) < S.R * S.R;
+}
+
+function inclusionFits(u, v, r) {
+  const y = localY(v);
+  return v - r > 0.5 && Math.sqrt(u * u + (y - S.cy) * (y - S.cy)) + r < S.R - 0.5;
+}
+
+function medium(x, y) {
+  if (y < -T_COVER) return S.nImm;
+  if (y < 0) return N_GLASS;
+  if (state.geom === 'hanging') {
+    if (y > S.flatY + T_SLIDE) return 1;
+    if (y > S.flatY) return N_GLASS;
+  }
+  if (insideDrop(x, y)) {
+    if (state.inc && (x - S.ix) * (x - S.ix) + (y - S.iy) * (y - S.iy) < state.incR * state.incR) return state.incN;
+    return state.nd;
+  }
+  return 1;
+}
+
+// Finds the nearest surface along the ray. Returns [distance, normal x, normal y].
+function nextHit(px, py, dx, dy) {
+  let best = Infinity, nx = 0, ny = 1;
+  const planes = state.geom === 'normal' ? [-T_COVER, 0] : [-T_COVER, 0, S.flatY, S.flatY + T_SLIDE];
+  if (dy !== 0) {
+    for (const Y of planes) {
+      const s = (Y - py) / dy;
+      if (s > EPS && s < best) { best = s; nx = 0; ny = 1; }
+    }
+  }
+  const circles = [[0, S.cy, S.R, true]];
+  if (state.inc) circles.push([S.ix, S.iy, state.incR, false]);
+  for (const c of circles) {
+    const ox = px - c[0], oy = py - c[1];
+    const b = ox * dx + oy * dy;
+    const disc = b * b - (ox * ox + oy * oy - c[2] * c[2]);
+    if (disc <= 0) continue;
+    const root = Math.sqrt(disc);
+    for (const s of [-b - root, -b + root]) {
+      if (s <= EPS || s >= best) continue;
+      const hy = py + s * dy;
+      // Only the cap of the big circle is a real surface.
+      if (c[3] && (state.geom === 'normal' ? hy < 1e-6 : hy > S.flatY - 1e-6)) continue;
+      best = s; nx = (px + s * dx - c[0]) / c[2]; ny = (hy - c[1]) / c[2];
+    }
+  }
+  return [best, nx, ny];
+}
+
+// Follows one ray, splitting it at every surface into a refracted and a reflected part.
+// x0 is where the ray last crossed the coverslip top; collect(x, w) receives rays that reach the camera.
+// Returns 2 if any part reaches the camera, 1 if it is only blocked in the objective, 0 if it is lost.
+function trace(px, py, dx, dy, w, depth, x0, rec, collect) {
+  if (py <= -T_COVER + 1e-7 && dy < 0) {
+    // Below the coverslip: the ray enters the objective. It is accepted by angle.
+    const ok = S.nImm * Math.abs(dx) <= state.na;
+    const s = (S.lensY - py) / dy;
+    const lensX = px + s * dx;
+    if (ok) {
+      // An ideal lens sends the ray to the camera position that matches where its straight
+      // backward extension crosses the focal plane. A lens mirrors the image, hence the minus.
+      const camX = -(x0 + S.yf * dx / dy);
+      collect(camX, w);
+      if (rec) {
+        segs.push([px, py, lensX, S.lensY, w, 2]);
+        segs.push([lensX, S.lensY, camX, CAM_Y, w, 2]);
+      }
+      return 2;
+    }
+    if (rec) segs.push([px, py, lensX, S.lensY, w, 1]);
+    return 1;
+  }
+  const hit = nextHit(px, py, dx, dy);
+  const s = hit[0];
+  const hx = px + s * dx, hy = py + s * dy;
+  if (s === Infinity || Math.abs(hx) > 250 || depth >= MAX_DEPTH) {
+    // Lost light is drawn as a short stub to keep the picture readable.
+    if (rec) segs.push([px, py, px + 12 * dx, py + 12 * dy, w, 0]);
+    return 0;
+  }
+  const n1 = medium(hx - dx * 1e-4, hy - dy * 1e-4);
+  const n2 = medium(hx + dx * 1e-4, hy + dy * 1e-4);
+  const nextX0 = Math.abs(hy) < 1e-7 ? hx : x0;
+  let fate = 0;
+
+  if (Math.abs(n1 - n2) < 1e-9) {
+    fate = trace(hx, hy, dx, dy, w, depth, nextX0, rec, collect);
+  } else {
+    let nx = hit[1], ny = hit[2];
+    let cosi = -(dx * nx + dy * ny);
+    if (cosi < 0) { nx = -nx; ny = -ny; cosi = -cosi; }
+    const eta = n1 / n2;
+    const k = 1 - eta * eta * (1 - cosi * cosi);
+    const rx = dx + 2 * cosi * nx, ry = dy + 2 * cosi * ny;
+    if (k < 0) {
+      if (rec && hit[1] !== 0) tirPoints.push([hx, hy]);
+      // Light reflected at the underside of the coverslip stays guided in the glass, so stop following it.
+      if (hy > -T_COVER + 1e-7) fate = trace(hx, hy, rx, ry, w, depth + 1, nextX0, rec, collect);
+    } else {
+      const cost = Math.sqrt(k);
+      const rs = (n1 * cosi - n2 * cost) / (n1 * cosi + n2 * cost);
+      const rp = (n1 * cost - n2 * cosi) / (n1 * cost + n2 * cosi);
+      const refl = (rs * rs + rp * rp) / 2;
+      const tx = eta * dx + (eta * cosi - cost) * nx, ty = eta * dy + (eta * cosi - cost) * ny;
+      fate = trace(hx, hy, tx, ty, w * (1 - refl), depth + 1, nextX0, rec, collect);
+      if (w * refl > CUTOFF) {
+        fate = Math.max(fate, trace(hx, hy, rx, ry, w * refl, depth + 1, nextX0, rec, collect));
+      }
+    }
+  }
+  if (rec) segs.push([px, py, hx, hy, w, fate]);
+  return fate;
+}
+
+function compute() {
+  buildScene();
+  segs = []; tirPoints = [];
+  profile = new Float64Array(NB); probeSpot = new Float64Array(NB);
+  stats = {};
+
+  let sourceWeight = 1;
+  const toProfile = function (x, w) {
+    const bin = Math.floor(x + XB);
+    if (bin >= 0 && bin < NB) profile[bin] += w * sourceWeight;
+  };
+
+  if (state.mode === 'fluo') {
+    const px = state.probe.u, py = localY(state.probe.v);
+
+    // Rays drawn in the picture, from the probe point.
+    for (let i = 0; i < 32; i++) {
+      const a = (i + 0.5) / 32 * 2 * Math.PI;
+      trace(px, py, Math.cos(a), Math.sin(a), 1, 0, NaN, true, function () {});
+    }
+
+    // Where the probe point's light lands on the camera, with many more rays.
+    const spotHits = [];
+    for (let i = 0; i < 720; i++) {
+      const a = (i + 0.5) / 720 * 2 * Math.PI;
+      trace(px, py, Math.cos(a), Math.sin(a), 1, 0, NaN, false, function (x, w) {
+        spotHits.push([x, w]);
+        const bin = Math.floor(x + XB);
+        if (bin >= 0 && bin < NB) probeSpot[bin] += w;
+      });
+    }
+    spotHits.sort(function (p, q) { return p[0] - q[0]; });
+    let total = 0, near = 0, run = 0, lo = null, hi = null;
+    for (const hitPoint of spotHits) {
+      total += hitPoint[1];
+      if (Math.abs(hitPoint[0] + px) <= 2) near += hitPoint[1];
+    }
+    for (const hitPoint of spotHits) {
+      run += hitPoint[1];
+      if (lo === null && run >= 0.2 * total) lo = hitPoint[0];
+      if (hi === null && run >= 0.8 * total) hi = hitPoint[0];
+    }
+    stats.sharp = total > 0 ? near / total : null;   // share landing within 2 µm of the probe's (mirrored) image position
+    stats.spread = total > 0 ? hi - lo : null;       // width that holds the middle 60 % of the light
+
+    // Whole droplet: one emitter per square micrometre.
+    for (let x = -Math.ceil(S.R) + 0.5; x < S.R; x += 1) {
+      for (let v = 0.5; v < S.h; v += 1) {
+        const y = localY(v);
+        if (!insideDrop(x, y)) continue;
+        sourceWeight = 1;
+        if (state.inc && (x - S.ix) * (x - S.ix) + (y - S.iy) * (y - S.iy) < state.incR * state.incR) sourceWeight = state.incDye;
+        if (sourceWeight === 0) continue;
+        for (let i = 0; i < 90; i++) {
+          const a = (i + 0.5) / 90 * 2 * Math.PI;
+          trace(x, y, Math.cos(a), Math.sin(a), 1, 0, NaN, false, toProfile);
+        }
+      }
+    }
+  } else {
+    const maxAngle = Math.asin(state.cna);
+    const shown = state.cna < 0.03 ? [0] : [-maxAngle, 0, maxAngle];
+    for (const a of shown) {
+      for (let x = -144; x <= 144; x += shown.length === 1 ? 6 : 12) {
+        trace(x, 160, Math.sin(a), -Math.cos(a), 1, 0, NaN, true, function () {});
+      }
+    }
+    const angles = 9, spacing = 0.25;
+    for (let j = 0; j < angles; j++) {
+      const sinA = state.cna * ((j + 0.5) / angles * 2 - 1);
+      const cosA = Math.sqrt(1 - sinA * sinA);
+      for (let x = -260; x <= 260; x += spacing) {
+        trace(x, 160, sinA, -cosA, 1, 0, NaN, false, toProfile);
+      }
+    }
+    // 1 = an empty field of view with the full condenser cone collected.
+    for (let i = 0; i < NB; i++) profile[i] /= angles / spacing;
+  }
+
+  // Light smoothing to hide the ray sampling grid.
+  for (const arr of [profile, probeSpot]) {
+    const copy = arr.slice();
+    for (let i = 1; i < NB - 1; i++) arr[i] = (copy[i - 1] + 2 * copy[i] + copy[i + 1]) / 4;
+  }
+}
+
+// ---------- drawing ----------
+
+const diagram = document.getElementById('diagram');
+const profileCanvas = document.getElementById('profile');
+const camera = document.getElementById('camera');
+let scale = 1;
+
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+function fitCanvas(canvas, heightCss) {
+  const dpr = window.devicePixelRatio || 1;
+  const width = canvas.clientWidth;
+  canvas.style.height = heightCss + 'px';
+  canvas.width = Math.round(width * dpr);
+  canvas.height = Math.round(heightCss * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return ctx;
+}
+
+function X(x) { return (x + XB) * scale; }
+function Y(y) { return (S.top - y) * scale; }
+
+function profileMax() {
+  let max = 0;
+  for (let i = 0; i < NB; i++) max = Math.max(max, profile[i]);
+  if (state.mode === 'bf') max = Math.max(max, 1.2);
+  return max === 0 ? 1 : max;
+}
+
+// Colour of one camera pixel for a given profile value.
+function pixelColor(value) {
+  if (state.mode === 'fluo') {
+    const v = value / profileMax();
+    return [30 * v, 200 * v, 255 * v];
+  }
+  const v = Math.min(255, value * 185);
+  return [v, v, v];
+}
+
+function drawDiagram() {
+  scale = diagram.clientWidth / (2 * XB);
+  const ctx = fitCanvas(diagram, (S.top - Y0) * scale);
+  const W = diagram.clientWidth;
+  const font = getComputedStyle(document.body).fontFamily;
+  const ink = css('--ink'), muted = css('--muted');
+  ctx.font = '12px ' + font;
+  ctx.lineJoin = 'round';
+
+  // coverslip and top slide
+  ctx.fillStyle = css('--glass');
+  ctx.fillRect(0, Y(0), W, T_COVER * scale);
+  if (state.geom === 'hanging') ctx.fillRect(0, Y(S.flatY + T_SLIDE), W, T_SLIDE * scale);
+  if (state.mode === 'bf') { ctx.fillStyle = css('--metal'); ctx.fillRect(X(-72), 0, 144 * scale, 4 * scale); }
+
+  // objective, drawn as a cutaway: metal housing on both sides and one lens across
+  const lensPx = Y(S.lensY);
+  ctx.fillStyle = css('--metal');
+  ctx.globalAlpha = 0.22;
+  ctx.fillRect(0, lensPx, W, 34 * scale);
+  ctx.globalAlpha = 1;
+  ctx.fillRect(0, lensPx - 5 * scale, 6 * scale, 39 * scale);
+  ctx.fillRect(W - 6 * scale, lensPx - 5 * scale, 6 * scale, 39 * scale);
+  ctx.beginPath();
+  ctx.moveTo(X(-84), lensPx);
+  ctx.quadraticCurveTo(X(0), lensPx - 10 * scale, X(84), lensPx);
+  ctx.quadraticCurveTo(X(0), lensPx + 10 * scale, X(-84), lensPx);
+  ctx.fillStyle = css('--lens'); ctx.fill();
+  ctx.strokeStyle = css('--drop-edge'); ctx.lineWidth = 1; ctx.stroke();
+
+  // camera sensor: a strip of pixels showing what the camera records
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, Y(CAM_Y), W, 7 * scale);
+  for (let i = 0; i < NB; i++) {
+    const c = pixelColor(profile[i]);
+    ctx.fillStyle = 'rgb(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ')';
+    ctx.fillRect(X(i - XB), Y(CAM_Y), scale + 0.5, 7 * scale);
+  }
+
+  // droplet
+  ctx.beginPath();
+  for (let i = 0; i <= 60; i++) {
+    const phi = -S.th + 2 * S.th * i / 60;
+    const y = state.geom === 'normal' ? S.cy + S.R * Math.cos(phi) : S.cy - S.R * Math.cos(phi);
+    ctx.lineTo(X(S.R * Math.sin(phi)), Y(y));
+  }
+  ctx.closePath();
+  ctx.fillStyle = css('--drop'); ctx.fill();
+  ctx.strokeStyle = css('--drop-edge'); ctx.lineWidth = 1.2; ctx.stroke();
+
+  if (state.inc) {
+    ctx.beginPath();
+    ctx.arc(X(S.ix), Y(S.iy), state.incR * scale, 0, 2 * Math.PI);
+    ctx.fillStyle = css('--inc'); ctx.fill();
+    ctx.strokeStyle = css('--ray'); ctx.lineWidth = 1; ctx.stroke();
+  }
+
+  // rays
+  const colors = [css('--lost'), css('--miss'), css('--ray')];
+  for (const seg of segs) {
+    if (seg[4] < 0.08) continue;
+    ctx.globalAlpha = seg[5] === 0 ? 0.45 : Math.max(0.3, Math.min(1, Math.sqrt(seg[4])));
+    ctx.strokeStyle = colors[seg[5]];
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash(seg[5] === 0 ? [4, 3] : []);
+    ctx.beginPath(); ctx.moveTo(X(seg[0]), Y(seg[1])); ctx.lineTo(X(seg[2]), Y(seg[3])); ctx.stroke();
+  }
+  ctx.globalAlpha = 1; ctx.setLineDash([]);
+
+  ctx.strokeStyle = css('--tir'); ctx.lineWidth = 1.5;
+  for (const p of tirPoints) { ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), 3.5, 0, 2 * Math.PI); ctx.stroke(); }
+
+  // focal plane of the objective
+  const focus = css('--focus');
+  ctx.strokeStyle = focus; ctx.lineWidth = 1.5; ctx.setLineDash([7, 5]);
+  ctx.beginPath(); ctx.moveTo(0, Y(S.yf)); ctx.lineTo(W, Y(S.yf)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = focus; ctx.textAlign = 'left';
+  ctx.fillText('focal plane', 6, Y(S.yf) - 5);
+
+  // what is really in focus inside the droplet (flat interfaces only, so normal setup)
+  if (state.geom === 'normal' && state.z > 0) {
+    const yTrue = state.z * state.nd / S.nImm;
+    if (yTrue < S.h) {
+      const half = Math.sqrt(S.R * S.R - (yTrue - S.cy) * (yTrue - S.cy));
+      ctx.strokeStyle = focus; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(X(-half), Y(yTrue)); ctx.lineTo(X(half), Y(yTrue)); ctx.stroke();
+      ctx.fillStyle = focus; ctx.fillText('in focus inside droplet', X(half) + 6, Y(yTrue) + 4);
+    }
+  }
+
+  if (state.mode === 'fluo') {
+    ctx.beginPath(); ctx.arc(X(state.probe.u), Y(localY(state.probe.v)), 5, 0, 2 * Math.PI);
+    ctx.fillStyle = css('--ray'); ctx.fill();
+    ctx.strokeStyle = ink; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+
+  // labels
+  ctx.fillStyle = muted; ctx.textAlign = 'right';
+  ctx.fillText('coverslip', W - 10, Y(-T_COVER / 2) + 4);
+  if (state.geom === 'hanging') ctx.fillText('top slide', W - 10, Y(S.flatY + T_SLIDE / 2) + 4);
+  if (state.mode === 'bf') ctx.fillText('light from the condenser', W - 10, 4 * scale + 14);
+  ctx.fillStyle = ink;
+  ctx.fillText('objective lens, moves with the focus', W - 6 * scale - 6, lensPx + 30 * scale);
+  ctx.fillText('camera sensor', W - 10, Y(CAM_Y) - 6);
+}
+
+function drawProfile() {
+  const H = 120, ctx = fitCanvas(profileCanvas, H);
+  const W = profileCanvas.clientWidth;
+  const font = getComputedStyle(document.body).fontFamily;
+  const base = H - 22, top = 8;
+  const max = profileMax();
+
+  ctx.font = '11px ' + font; ctx.textAlign = 'center';
+  ctx.strokeStyle = css('--line'); ctx.fillStyle = css('--muted'); ctx.lineWidth = 1;
+  for (let x = -80; x <= 80; x += 20) {
+    ctx.beginPath(); ctx.moveTo(X(x), top); ctx.lineTo(X(x), base); ctx.stroke();
+    ctx.fillText(x + (x === 80 ? ' µm' : ''), X(x), H - 6);
+  }
+  ctx.beginPath(); ctx.moveTo(0, base); ctx.lineTo(W, base); ctx.stroke();
+
+  if (state.mode === 'fluo') {
+    let spotMax = 0;
+    for (let i = 0; i < NB; i++) spotMax = Math.max(spotMax, probeSpot[i]);
+    if (spotMax > 0) {
+      ctx.beginPath(); ctx.moveTo(0, base);
+      for (let i = 0; i < NB; i++) ctx.lineTo(X(i - XB + 0.5), base - probeSpot[i] / spotMax * (base - top) * 0.55);
+      ctx.lineTo(W, base); ctx.closePath();
+      ctx.globalAlpha = 0.4; ctx.fillStyle = css('--ray'); ctx.fill(); ctx.globalAlpha = 1;
+    }
+  }
+
+  ctx.beginPath();
+  for (let i = 0; i < NB; i++) ctx.lineTo(X(i - XB + 0.5), base - profile[i] / max * (base - top));
+  ctx.strokeStyle = css('--ink'); ctx.lineWidth = 1.8; ctx.stroke();
+}
+
+function drawCamera() {
+  const ctx = camera.getContext('2d');
+  const size = 130, img = ctx.createImageData(size, size);
+  for (let py = 0; py < size; py++) {
+    for (let px = 0; px < size; px++) {
+      const r = Math.sqrt((px - 65) * (px - 65) + (py - 65) * (py - 65)) * 0.9;   // 0.9 µm per pixel
+      const right = profile[Math.min(NB - 1, Math.floor(XB + r))];
+      const left = profile[Math.max(0, Math.floor(XB - r))];
+      const c = pixelColor((left + right) / 2);
+      const o = (py * size + px) * 4;
+      img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function drawText() {
+  const fluo = state.mode === 'fluo';
+  document.getElementById('legend').innerHTML =
+    '<span><i class="sw" style="border-color:var(--ray)"></i>reaches the camera</span>' +
+    '<span><i class="sw" style="border-color:var(--miss)"></i>too steep, blocked in the objective</span>' +
+    '<span><i class="sw dash" style="border-color:var(--lost)"></i>lost</span>' +
+    '<span><i class="dot" style="border-color:var(--tir)"></i>total internal reflection</span>' +
+    (fluo ? '<span><i class="dot" style="border-color:var(--ink);background:var(--ray)"></i>probe point (drag it)</span>' : '');
+
+  document.getElementById('profile-cap').textContent = fluo
+    ? 'Brightness along the camera sensor. Line: the whole droplet. Shaded: the light from the probe point alone. The lens mirrors the image, so a point on the right lands on the left.'
+    : 'Brightness along the camera sensor. The flat level at the sides is the empty background.';
+
+  // One plain sentence about the current picture.
+  let live;
+  if (!fluo) {
+    live = 'Light from the condenser passes through the droplet. Where the curved surface bends it too steeply, the objective blocks it and that part of the image is dark.';
+  } else if (stats.sharp === null) {
+    live = 'None of the light from the probe point is accepted by the objective here.';
+  } else if (stats.sharp > 0.6) {
+    live = 'The probe point is <b>in focus</b>. The lens brings its rays back together at one spot on the camera, so it looks sharp.';
+  } else {
+    live = 'The probe point is <b>out of focus</b>. Its rays do not meet on the camera. They arrive spread over about ' + Math.max(1, stats.spread).toFixed(0) + ' µm, which is the blur.';
+  }
+  if (fluo && tirPoints.length > 2) live += ' Some of its light is reflected by the droplet surface (green circles) and lands in the wrong place.';
+  document.getElementById('explain').innerHTML = presetNote || live;
+
+  const where = state.geom === 'normal' ? 'above the glass' : 'above the droplet tip';
+  let html = '<div><dt>Focal plane</dt><dd>' + state.z.toFixed(1) + ' µm ' + where + '</dd></div>';
+  if (state.geom === 'normal' && state.z > 0) {
+    const t = state.z * state.nd / S.nImm;
+    html += '<div><dt>Really in focus inside the droplet</dt><dd>' + (t < S.h ? t.toFixed(1) + ' µm above the glass' : 'above the droplet top (' + S.h.toFixed(0) + ' µm)') + '</dd></div>';
+  }
+  if (fluo && stats.sharp !== null) {
+    html += '<div><dt>Probe light landing in the right spot</dt><dd>' + (stats.sharp * 100).toFixed(0) + ' %</dd></div>';
+  }
+  document.getElementById('stats').innerHTML = html;
+}
+
+let pending = false;
+function update() {
+  if (pending) return;
+  pending = true;
+  requestAnimationFrame(function () {
+    pending = false;
+    compute(); drawDiagram(); drawProfile(); drawCamera(); drawText();
+  });
+}
+
+// ---------- controls ----------
+
+const sliders = { z: ' µm', ca: '°', nd: '', na: '', cna: '', incR: ' µm', incN: '', incDye: '×' };
+
+function syncControls() {
+  for (const key in sliders) {
+    const input = document.getElementById(key);
+    input.value = state[key];
+    const digits = input.step.indexOf('.') < 0 ? 0 : input.step.split('.')[1].length;
+    document.getElementById(key + '-out').textContent = Number(state[key]).toFixed(digits) + sliders[key];
+  }
+  document.getElementById('mode-' + state.mode).checked = true;
+  document.getElementById('geom-' + state.geom).checked = true;
+  document.getElementById('imm-' + state.imm).checked = true;
+  document.getElementById('inc').checked = state.inc;
+  document.getElementById('cna-ctl').hidden = state.mode !== 'bf';
+  document.getElementById('incDye-ctl').hidden = state.mode !== 'fluo';
+  for (const key of ['incR', 'incN', 'incDye']) document.getElementById(key).disabled = !state.inc;
+  document.getElementById('na').max = state.imm === 'oil' ? 1.4 : 0.95;
+}
+
+// Any manual change ends the walkthrough step, so its text does not go stale.
+function manualChange() {
+  presetNote = '';
+  for (const button of document.querySelectorAll('[data-preset]')) button.classList.remove('on');
+  syncControls(); update();
+}
+
+for (const key in sliders) {
+  if (key === 'z') continue;   // the focus slider has its own handler below
+  document.getElementById(key).addEventListener('input', function (e) {
+    state[key] = parseFloat(e.target.value);
+    manualChange();
+  });
+}
+for (const name of ['mode', 'geom', 'imm']) {
+  for (const radio of document.querySelectorAll('input[name=' + name + ']')) {
+    radio.addEventListener('change', function () {
+      state[name] = radio.value;
+      if (name === 'imm') state.na = state.imm === 'oil' ? 1.3 : Math.min(state.na, 0.95);
+      manualChange();
+    });
+  }
+}
+document.getElementById('inc').addEventListener('change', function (e) {
+  state.inc = e.target.checked; manualChange();
+});
+
+const presets = {
+  sharp: {
+    set: { mode: 'fluo', geom: 'normal', z: 0, inc: false, probe: { u: 26, v: 1.5 } },
+    note: 'The probe point sits near the contact line and the focal plane is at the glass. Follow the orange rays: they spread out, the lens bends them, and they meet again at <b>one spot</b> on the camera. That is a sharp point.'
+  },
+  up: {
+    set: { mode: 'fluo', geom: 'normal', z: 20, inc: false, probe: { u: 26, v: 1.5 } },
+    note: 'Same point, but the objective has moved up 20 µm. The same rays are collected, but they <b>no longer meet</b> on the camera. They arrive spread out, and that is blur. Slide Focus z back and forth to see the spot open and close.'
+  },
+  mirror: {
+    set: { mode: 'fluo', geom: 'normal', z: 0, ca: 75, inc: false, probe: { u: 14, v: 6 } },
+    note: 'Light going upward hits the curved surface from the inside. Where it hits at a steep angle it is totally reflected (green circles), comes back down and lands on the camera <b>far from where it started</b>. Added up over the whole droplet, this makes the bright ring.'
+  },
+  hanging: {
+    set: { mode: 'fluo', geom: 'hanging', z: 8, inc: false, probe: { u: 14, v: 6 } },
+    note: 'The droplet now hangs under the top slide. The curved surface faces the objective and lets the light out instead of reflecting it back in, so the false bright ring is gone and the profile is a smooth dome.'
+  },
+  rim: {
+    set: { mode: 'bf', geom: 'normal', z: 0, cna: 0.1, inc: false },
+    note: 'In brightfield the light comes from the condenser above. Through the middle it passes almost straight. Near the edge the curved surface bends it so steeply that the objective blocks it (grey), so the <b>rim is dark</b>.'
+  },
+  inclusion: {
+    set: { mode: 'fluo', geom: 'normal', z: 8, ca: 75, inc: true, incR: 5, incDye: 0.2, incPos: { u: -6, v: 12 }, probe: { u: -6, v: 12 } },
+    note: 'A second phase with less dye sits inside the droplet. Slide Focus z up and down and watch the profile: the dip it makes is clearest when the focus is at its height, and fades into the blur when the focus is elsewhere.'
+  }
+};
+for (const button of document.querySelectorAll('[data-preset]')) {
+  button.addEventListener('click', function () {
+    const preset = presets[button.dataset.preset];
+    for (const key in preset.set) {
+      const value = preset.set[key];
+      state[key] = typeof value === 'object' ? Object.assign({}, value) : value;
+    }
+    presetNote = preset.note;
+    for (const other of document.querySelectorAll('[data-preset]')) other.classList.toggle('on', other === button);
+    syncControls(); update();
+  });
+}
+
+// Drag the probe point, the inclusion or the focal plane directly in the picture.
+let dragging = null;
+function worldPoint(e) {
+  const box = diagram.getBoundingClientRect();
+  return { x: (e.clientX - box.left) / scale - XB, y: S.top - (e.clientY - box.top) / scale };
+}
+diagram.addEventListener('pointerdown', function (e) {
+  const p = worldPoint(e);
+  const grab = 14 / scale;
+  const probeY = localY(state.probe.v);
+  if (state.mode === 'fluo' && Math.hypot(p.x - state.probe.u, p.y - probeY) < grab) dragging = 'probe';
+  else if (state.inc && Math.hypot(p.x - S.ix, p.y - S.iy) < state.incR + 2) dragging = 'inc';
+  else if (Math.abs(p.y - S.yf) < grab) dragging = 'focus';
+  else if (state.mode === 'fluo' && insideDrop(p.x, p.y)) dragging = 'probe';
+  if (dragging) { diagram.setPointerCapture(e.pointerId); moveDrag(p); }
+});
+diagram.addEventListener('pointermove', function (e) { if (dragging) moveDrag(worldPoint(e)); });
+diagram.addEventListener('pointerup', function () { dragging = null; });
+diagram.addEventListener('pointercancel', function () { dragging = null; });
+
+function moveDrag(p) {
+  const v = state.geom === 'normal' ? p.y : S.flatY - p.y;
+  if (dragging === 'probe' && insideDrop(p.x, p.y)) state.probe = { u: p.x, v: v };
+  if (dragging === 'inc' && inclusionFits(p.x, v, state.incR)) state.incPos = { u: p.x, v: v };
+  if (dragging === 'focus') {
+    // Moving the focus keeps the walkthrough text, since the steps ask for it.
+    state.z = Math.max(-8, Math.min(30, Math.round((p.y - S.yRef) * 2) / 2));
+    syncControls(); update();
+    return;
+  }
+  manualChange();
+}
+
+// The focus slider also keeps the walkthrough text.
+document.getElementById('z').addEventListener('input', function (e) {
+  state.z = parseFloat(e.target.value);
+  syncControls(); update();
+}, true);
+
+window.addEventListener('resize', update);
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', update);
+new MutationObserver(update).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(update);
+
+presetNote = presets.sharp.note;
+document.querySelector('[data-preset=sharp]').classList.add('on');
+syncControls();
+update();
+</script>
+
+</body></html>
